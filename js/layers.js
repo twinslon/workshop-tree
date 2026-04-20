@@ -12,10 +12,23 @@ function spendLayerPoints(layer, amount) {
 	player[layer].spentOnBuyables = player[layer].spentOnBuyables.add(amount)
 }
 
+function buyMaxWorkshopBuyable(layer, id) {
+	let guard = 0
+	while (canBuyBuyable(layer, id) && guard < 1000) {
+		run(layers[layer].buyables[id].buy, layers[layer].buyables[id])
+		updateBuyableTemp(layer)
+		guard++
+	}
+}
+
 function logisticsBoost(target) {
 	if (!player.l || player.l.focus != target) return new Decimal(1)
+	if (inChallenge("b", 22)) return new Decimal(1)
 	let completedContracts = challengeCompletions("b", 11) + challengeCompletions("b", 12)
-	return new Decimal(2).add(completedContracts)
+		+ challengeCompletions("b", 21) + challengeCompletions("b", 22)
+	let boost = new Decimal(2).add(completedContracts)
+	if (player.f && player.f.unlocked) boost = boost.add(player.f.points)
+	return boost
 }
 
 addLayer("p", {
@@ -39,6 +52,7 @@ addLayer("p", {
 		let mult = new Decimal(1)
 		if (hasUpgrade("p", 11)) mult = mult.times(2)
 		if (hasUpgrade("p", 14)) mult = mult.times(buyableEffect("p", 11))
+		if (hasUpgrade("p", 25)) mult = mult.times(player.m.points.add(1).pow(0.25))
 		if (hasUpgrade("m", 12)) mult = mult.times(upgradeEffect("m", 12))
 		if (player.l && player.l.focus == "parts") mult = mult.times(clickableEffect("l", 12))
 		if (player.f && player.f.unlocked) mult = mult.times(layers.f.effect())
@@ -100,6 +114,26 @@ addLayer("p", {
 			cost: new Decimal(125),
 			unlocked() { return hasUpgrade("p", 21) && player.m.unlocked },
 		},
+		23: {
+			title: "Bulk Bins",
+			description: "Unlock bulk buying for Parts buyables.",
+			cost: new Decimal(250),
+			unlocked() { return hasUpgrade("p", 22) },
+		},
+		24: {
+			title: "Scrap Press",
+			description: "Wires boost Scrap gain.",
+			cost: new Decimal(400),
+			effect() { return buyableEffect("p", 12).pow(0.75) },
+			effectDisplay() { return format(upgradeEffect("p", 24)) + "x" },
+			unlocked() { return hasUpgrade("p", 23) },
+		},
+		25: {
+			title: "Machine Gauges",
+			description: "Machines add a small boost to Parts gain.",
+			cost: new Decimal(750),
+			unlocked() { return hasUpgrade("p", 24) && player.m.unlocked },
+		},
 	},
 	buyables: {
 		11: {
@@ -108,6 +142,7 @@ addLayer("p", {
 			effect(x) {
 				let eff = new Decimal(1.35).pow(x)
 				if (hasUpgrade("p", 21)) eff = eff.times(buyableEffect("p", 12).sqrt())
+				if (inChallenge("b", 21)) eff = eff.sqrt()
 				return eff
 			},
 			display() { return workshopBuyableDisplay(this.layer, this.id, "Multiplies Parts gain.", "parts") },
@@ -117,12 +152,17 @@ addLayer("p", {
 				spendLayerPoints("p", cost)
 				addBuyables("p", this.id, 1)
 			},
+			buyMax() { if (hasUpgrade("p", 23)) buyMaxWorkshopBuyable(this.layer, this.id) },
 			unlocked() { return hasUpgrade("p", 14) },
 		},
 		12: {
 			title: "Wires",
 			cost(x) { return new Decimal(20).times(new Decimal(2).pow(x)) },
-			effect(x) { return new Decimal(1.25).pow(x) },
+			effect(x) {
+				let eff = new Decimal(1.25).pow(x)
+				if (inChallenge("b", 21)) eff = eff.sqrt()
+				return eff
+			},
 			display() { return workshopBuyableDisplay(this.layer, this.id, "Improves Gears once Measured Cuts is bought.", "parts") },
 			canAfford() { return player.p.points.gte(tmp.p.buyables[this.id].cost) },
 			buy() {
@@ -130,12 +170,17 @@ addLayer("p", {
 				spendLayerPoints("p", cost)
 				addBuyables("p", this.id, 1)
 			},
+			buyMax() { if (hasUpgrade("p", 23)) buyMaxWorkshopBuyable(this.layer, this.id) },
 			unlocked() { return hasUpgrade("p", 15) },
 		},
 		13: {
 			title: "Plates",
 			cost(x) { return new Decimal(35).times(new Decimal(2.25).pow(x)) },
-			effect(x) { return new Decimal(1.3).pow(x) },
+			effect(x) {
+				let eff = new Decimal(1.3).pow(x)
+				if (inChallenge("b", 21)) eff = eff.sqrt()
+				return eff
+			},
 			display() { return workshopBuyableDisplay(this.layer, this.id, "Multiplies Machines gain after Standard Screws.", "parts") },
 			canAfford() { return player.p.points.gte(tmp.p.buyables[this.id].cost) },
 			buy() {
@@ -143,8 +188,19 @@ addLayer("p", {
 				spendLayerPoints("p", cost)
 				addBuyables("p", this.id, 1)
 			},
+			buyMax() { if (hasUpgrade("p", 23)) buyMaxWorkshopBuyable(this.layer, this.id) },
 			unlocked() { return hasUpgrade("p", 15) },
 		},
+	},
+	passiveGeneration() {
+		if (hasUpgrade("m", 24)) return 0.1
+		return 0
+	},
+	autoPrestige() {
+		return hasUpgrade("m", 25)
+	},
+	autoUpgrade() {
+		return hasUpgrade("m", 23)
 	},
 	doReset(resettingLayer) {
 		if (layers[resettingLayer].row <= this.row) return
@@ -181,6 +237,9 @@ addLayer("m", {
 		let mult = new Decimal(1)
 		if (hasUpgrade("p", 22)) mult = mult.times(buyableEffect("p", 13))
 		if (hasUpgrade("m", 14)) mult = mult.times(buyableEffect("m", 11))
+		if (hasUpgrade("m", 21)) mult = mult.times(buyableEffect("m", 12))
+		if (hasUpgrade("b", 14)) mult = mult.times(upgradeEffect("b", 14))
+		if (hasUpgrade("f", 11)) mult = mult.times(upgradeEffect("f", 11))
 		if (player.l && player.l.focus == "machines") mult = mult.times(clickableEffect("l", 13))
 		if (player.f && player.f.unlocked) mult = mult.times(layers.f.effect())
 		return mult
@@ -188,6 +247,7 @@ addLayer("m", {
 	gainExp() { return new Decimal(1) },
 	row: 1,
 	effect() {
+		if (inChallenge("b", 12)) return new Decimal(1)
 		return player.m.points.add(1).pow(0.6)
 	},
 	effectDescription() {
@@ -221,6 +281,36 @@ addLayer("m", {
 			cost: new Decimal(12),
 			unlocked() { return hasUpgrade("m", 13) },
 		},
+		21: {
+			title: "Conveyor Belts",
+			description: "Unlock Conveyor buyables. They multiply Machines gain.",
+			cost: new Decimal(25),
+			unlocked() { return hasUpgrade("m", 14) && hasMilestone("m", 3) },
+		},
+		22: {
+			title: "Preventive Maintenance",
+			description: "Toolheads boost Blueprint gain.",
+			cost: new Decimal(50),
+			unlocked() { return hasUpgrade("m", 21) },
+		},
+		23: {
+			title: "Service Manuals",
+			description: "Automatically buy Parts upgrades.",
+			cost: new Decimal(100),
+			unlocked() { return hasUpgrade("m", 22) },
+		},
+		24: {
+			title: "Feeder Lines",
+			description: "Passively generate 10% of your Parts reset gain each second.",
+			cost: new Decimal(200),
+			unlocked() { return hasUpgrade("m", 23) },
+		},
+		25: {
+			title: "Night Shift",
+			description: "Automatically reset for Parts when possible.",
+			cost: new Decimal(400),
+			unlocked() { return hasUpgrade("m", 24) },
+		},
 	},
 	buyables: {
 		11: {
@@ -234,7 +324,22 @@ addLayer("m", {
 				spendLayerPoints("m", cost)
 				addBuyables("m", this.id, 1)
 			},
+			buyMax() { if (hasMilestone("b", 1)) buyMaxWorkshopBuyable(this.layer, this.id) },
 			unlocked() { return hasUpgrade("m", 14) },
+		},
+		12: {
+			title: "Conveyors",
+			cost(x) { return new Decimal(10).times(new Decimal(2.1).pow(x)) },
+			effect(x) { return new Decimal(1.32).pow(x) },
+			display() { return workshopBuyableDisplay(this.layer, this.id, "Multiplies Machines gain after Conveyor Belts.", "machines") },
+			canAfford() { return player.m.points.gte(tmp.m.buyables[this.id].cost) },
+			buy() {
+				let cost = tmp.m.buyables[this.id].cost
+				spendLayerPoints("m", cost)
+				addBuyables("m", this.id, 1)
+			},
+			buyMax() { if (hasMilestone("b", 1)) buyMaxWorkshopBuyable(this.layer, this.id) },
+			unlocked() { return hasUpgrade("m", 21) },
 		},
 	},
 	milestones: {
@@ -252,6 +357,11 @@ addLayer("m", {
 			requirementDescription: "15 total Machines",
 			effectDescription: "Unlock Logistics routing.",
 			done() { return player.m.total.gte(15) },
+		},
+		3: {
+			requirementDescription: "100 total Machines",
+			effectDescription: "Unlock the second row of Machine upgrades.",
+			done() { return player.m.total.gte(100) },
 		},
 	},
 	doReset(resettingLayer) {
@@ -334,6 +444,8 @@ addLayer("b", {
 	gainMult() {
 		let mult = new Decimal(1)
 		if (hasUpgrade("b", 11)) mult = mult.times(2)
+		if (hasUpgrade("m", 22)) mult = mult.times(buyableEffect("m", 11).pow(0.35))
+		if (hasUpgrade("f", 12)) mult = mult.times(upgradeEffect("f", 12))
 		if (player.f && player.f.unlocked) mult = mult.times(layers.f.effect())
 		return mult
 	},
@@ -359,12 +471,36 @@ addLayer("b", {
 			cost: new Decimal(8),
 			unlocked() { return hasUpgrade("b", 12) },
 		},
+		14: {
+			title: "Template Library",
+			description: "Blueprints boost Machines gain.",
+			cost: new Decimal(15),
+			effect() { return player.b.points.add(1).pow(0.45) },
+			effectDisplay() { return format(upgradeEffect("b", 14)) + "x" },
+			unlocked() { return hasUpgrade("b", 13) },
+		},
+		15: {
+			title: "Factory Survey",
+			description: "Factories start 25% cheaper.",
+			cost: new Decimal(30),
+			unlocked() { return hasUpgrade("b", 14) },
+		},
 	},
 	milestones: {
 		0: {
 			requirementDescription: "1 total Blueprint",
 			effectDescription: "Keep Machine upgrades on Blueprint and higher resets.",
 			done() { return player.b.total.gte(1) || hasUpgrade("b", 13) },
+		},
+		1: {
+			requirementDescription: "10 total Blueprints",
+			effectDescription: "Unlock bulk buying for Machine buyables.",
+			done() { return player.b.total.gte(10) },
+		},
+		2: {
+			requirementDescription: "25 total Blueprints",
+			effectDescription: "Keep Blueprint upgrades on Factory resets.",
+			done() { return player.b.total.gte(25) },
 		},
 	},
 	challenges: {
@@ -386,10 +522,34 @@ addLayer("b", {
 			completionLimit: 1,
 			unlocked() { return hasChallenge("b", 11) },
 		},
+		21: {
+			name: "Rush Order",
+			challengeDescription: "Parts buyables are weaker.",
+			goalDescription: "Reach 2,500 Scraps.",
+			canComplete() { return player.points.gte(2500) },
+			rewardDescription: "Scrap gain is multiplied by completed contracts.",
+			rewardEffect() {
+				return new Decimal(1.5).add(challengeCompletions("b", 11)).add(challengeCompletions("b", 12))
+			},
+			rewardDisplay() { return format(challengeEffect("b", 21)) + "x" },
+			completionLimit: 1,
+			unlocked() { return hasChallenge("b", 12) },
+		},
+		22: {
+			name: "Tool Audit",
+			challengeDescription: "Logistics routing is disabled.",
+			goalDescription: "Reach 50 Machines.",
+			canComplete() { return player.m.points.gte(50) },
+			rewardDescription: "Logistics routes count one extra contract.",
+			completionLimit: 1,
+			unlocked() { return hasChallenge("b", 21) },
+		},
 	},
 	doReset(resettingLayer) {
 		if (layers[resettingLayer].row <= this.row) return
-		layerDataReset(this.layer, ["milestones", "challenges"])
+		let keep = ["milestones", "challenges"]
+		if (hasMilestone("b", 2)) keep.push("upgrades")
+		layerDataReset(this.layer, keep)
 	},
 	hotkeys: [
 		{key: "b", description: "B: reset for Blueprints", onPress(){ if (canReset(this.layer)) doReset(this.layer) }},
@@ -408,7 +568,11 @@ addLayer("f", {
 		total: new Decimal(0),
 	}},
 	color: "#3f7f55",
-	requires: new Decimal(10),
+	requires() {
+		let req = new Decimal(10)
+		if (hasUpgrade("b", 15)) req = req.times(0.75)
+		return req
+	},
 	resource: "factories",
 	baseResource: "blueprints",
 	baseAmount() { return player.b.points },
@@ -424,6 +588,23 @@ addLayer("f", {
 	},
 	effectDescription() {
 		return "multiplying Scrap, Parts, Machines, and Blueprints by " + format(layers.f.effect()) + "x"
+	},
+	upgrades: {
+		11: {
+			title: "Shift Office",
+			description: "Factories boost Machine gain again.",
+			cost: new Decimal(1),
+			effect() { return player.f.points.add(1).pow(1.5) },
+			effectDisplay() { return format(upgradeEffect("f", 11)) + "x" },
+		},
+		12: {
+			title: "Production Ledger",
+			description: "Factories boost Blueprint gain.",
+			cost: new Decimal(2),
+			effect() { return player.f.points.add(1).pow(1.25) },
+			effectDisplay() { return format(upgradeEffect("f", 12)) + "x" },
+			unlocked() { return hasUpgrade("f", 11) },
+		},
 	},
 	milestones: {
 		0: {

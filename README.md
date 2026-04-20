@@ -18,10 +18,10 @@ Then visit `http://localhost:8000`.
 ## Current Content
 
 - Parts: the first prestige layer, with upgrades and repeatable buyables.
-- Machines: the second layer, with milestones that preserve lower progress.
+- Machines: the second layer, with milestones, automation, and machine shop buyables.
 - Logistics: a side layer for choosing a production focus.
-- Blueprints: challenges and higher-order upgrades.
-- Factories: a static prestige layer and current endgame goal.
+- Blueprints: contracts, mid-game upgrades, and preservation milestones.
+- Factories: a static prestige layer with late-game upgrades and the current endgame goal.
 
 ## Credits
 
