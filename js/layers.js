@@ -193,11 +193,12 @@ addLayer("p", {
 		},
 	},
 	passiveGeneration() {
+		if (hasUpgrade("m", 25)) return 0.35
 		if (hasUpgrade("m", 24)) return 0.1
 		return 0
 	},
 	autoPrestige() {
-		return hasUpgrade("m", 25)
+		return false
 	},
 	autoUpgrade() {
 		return hasUpgrade("m", 23)
@@ -307,7 +308,7 @@ addLayer("m", {
 		},
 		25: {
 			title: "Night Shift",
-			description: "Automatically reset for Parts when possible.",
+			description: "Increase passive Parts generation to 35% of your reset gain each second.",
 			cost: new Decimal(400),
 			unlocked() { return hasUpgrade("m", 24) },
 		},
@@ -481,7 +482,7 @@ addLayer("b", {
 		},
 		15: {
 			title: "Factory Survey",
-			description: "Factories start 25% cheaper.",
+			description: "Factories start 10% cheaper.",
 			cost: new Decimal(30),
 			unlocked() { return hasUpgrade("b", 14) },
 		},
@@ -569,22 +570,22 @@ addLayer("f", {
 	}},
 	color: "#3f7f55",
 	requires() {
-		let req = new Decimal(10)
-		if (hasUpgrade("b", 15)) req = req.times(0.75)
+		let req = new Decimal(20)
+		if (hasUpgrade("b", 15)) req = req.times(0.9)
 		return req
 	},
 	resource: "factories",
 	baseResource: "blueprints",
 	baseAmount() { return player.b.points },
 	type: "static",
-	base: 2,
-	exponent: 1.25,
+	base: 3,
+	exponent: 1.45,
 	canBuyMax() { return hasMilestone("f", 1) },
 	gainMult() { return new Decimal(1) },
 	gainExp() { return new Decimal(1) },
 	row: 3,
 	effect() {
-		return new Decimal(3).pow(player.f.points)
+		return new Decimal(2).pow(player.f.points)
 	},
 	effectDescription() {
 		return "multiplying Scrap, Parts, Machines, and Blueprints by " + format(layers.f.effect()) + "x"
@@ -593,15 +594,15 @@ addLayer("f", {
 		11: {
 			title: "Shift Office",
 			description: "Factories boost Machine gain again.",
-			cost: new Decimal(1),
-			effect() { return player.f.points.add(1).pow(1.5) },
+			cost: new Decimal(2),
+			effect() { return player.f.points.add(1).pow(1.1) },
 			effectDisplay() { return format(upgradeEffect("f", 11)) + "x" },
 		},
 		12: {
 			title: "Production Ledger",
 			description: "Factories boost Blueprint gain.",
-			cost: new Decimal(2),
-			effect() { return player.f.points.add(1).pow(1.25) },
+			cost: new Decimal(4),
+			effect() { return player.f.points.add(1).pow(0.9) },
 			effectDisplay() { return format(upgradeEffect("f", 12)) + "x" },
 			unlocked() { return hasUpgrade("f", 11) },
 		},

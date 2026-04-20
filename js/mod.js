@@ -11,11 +11,14 @@ let modInfo = {
 }
 
 let VERSION = {
-	num: "0.2",
-	name: "Automation Floor",
+	num: "0.2.1",
+	name: "Factory Tuning",
 }
 
 let changelog = `<h1>Changelog:</h1><br>
+	<h3>v0.2.1 - Factory Tuning</h3><br>
+		- Removed the forced Parts auto-reset loop from Night Shift.<br>
+		- Slowed Factory costs and reduced the global Factory multiplier so the post-Factory game lasts longer.<br><br>
 	<h3>v0.2 - Automation Floor</h3><br>
 		- Added bulk buying, more Parts and Machines upgrades, Machine automation, extra Blueprint contracts, and Factory upgrades.<br>
 		- Improved Logistics route scaling and mid-game pacing.<br><br>
@@ -62,6 +65,7 @@ var displayThings = [
 		if (player.l && player.l.focus) return "Logistics focus: " + player.l.focus
 	},
 	function() {
+		if (hasUpgrade("m", 25)) return "Machines are fabricating " + format(tmp.p.resetGain.times(0.35)) + " Parts/sec"
 		if (hasUpgrade("m", 24)) return "Machines are fabricating " + format(tmp.p.resetGain.times(0.1)) + " Parts/sec"
 	},
 ]
