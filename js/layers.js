@@ -28,6 +28,7 @@ function logisticsBoost(target) {
 		+ challengeCompletions("b", 21) + challengeCompletions("b", 22)
 	let boost = new Decimal(2).add(completedContracts)
 	if (player.f && player.f.unlocked) boost = boost.add(player.f.points)
+	if (player.w && player.w.unlocked) boost = boost.add(player.w.points)
 	return boost
 }
 
@@ -56,6 +57,8 @@ addLayer("p", {
 		if (hasUpgrade("m", 12)) mult = mult.times(upgradeEffect("m", 12))
 		if (player.l && player.l.focus == "parts") mult = mult.times(clickableEffect("l", 12))
 		if (player.f && player.f.unlocked) mult = mult.times(layers.f.effect())
+		if (player.w && player.w.unlocked) mult = mult.times(layers.w.effect())
+		if (player.r && player.r.unlocked) mult = mult.times(layers.r.effect())
 		return mult
 	},
 	gainExp() {
@@ -243,6 +246,8 @@ addLayer("m", {
 		if (hasUpgrade("f", 11)) mult = mult.times(upgradeEffect("f", 11))
 		if (player.l && player.l.focus == "machines") mult = mult.times(clickableEffect("l", 13))
 		if (player.f && player.f.unlocked) mult = mult.times(layers.f.effect())
+		if (player.w && player.w.unlocked) mult = mult.times(layers.w.effect())
+		if (player.r && player.r.unlocked) mult = mult.times(layers.r.effect())
 		return mult
 	},
 	gainExp() { return new Decimal(1) },
@@ -369,7 +374,11 @@ addLayer("m", {
 		if (layers[resettingLayer].row <= this.row) return
 		let keep = ["milestones"]
 		if (hasMilestone("b", 0)) keep.push("upgrades")
+		if (hasMilestone("w", 1)) keep.push("buyables", "spentOnBuyables")
 		layerDataReset(this.layer, keep)
+	},
+	autoUpgrade() {
+		return hasUpgrade("w", 12)
 	},
 	hotkeys: [
 		{key: "m", description: "M: reset for Machines", onPress(){ if (canReset(this.layer)) doReset(this.layer) }},
@@ -448,6 +457,8 @@ addLayer("b", {
 		if (hasUpgrade("m", 22)) mult = mult.times(buyableEffect("m", 11).pow(0.35))
 		if (hasUpgrade("f", 12)) mult = mult.times(upgradeEffect("f", 12))
 		if (player.f && player.f.unlocked) mult = mult.times(layers.f.effect())
+		if (player.w && player.w.unlocked) mult = mult.times(layers.w.effect())
+		if (player.r && player.r.unlocked) mult = mult.times(layers.r.effect())
 		return mult
 	},
 	gainExp() { return new Decimal(1) },
@@ -549,8 +560,12 @@ addLayer("b", {
 	doReset(resettingLayer) {
 		if (layers[resettingLayer].row <= this.row) return
 		let keep = ["milestones", "challenges"]
-		if (hasMilestone("b", 2)) keep.push("upgrades")
+		if (hasMilestone("b", 2) || hasMilestone("w", 1)) keep.push("upgrades")
 		layerDataReset(this.layer, keep)
+	},
+	passiveGeneration() {
+		if (hasUpgrade("w", 13)) return 0.1
+		return 0
 	},
 	hotkeys: [
 		{key: "b", description: "B: reset for Blueprints", onPress(){ if (canReset(this.layer)) doReset(this.layer) }},
@@ -581,7 +596,12 @@ addLayer("f", {
 	base: 3,
 	exponent: 1.45,
 	canBuyMax() { return hasMilestone("f", 1) },
-	gainMult() { return new Decimal(1) },
+	gainMult() {
+		let mult = new Decimal(1)
+		if (player.w && player.w.unlocked) mult = mult.times(layers.w.effect())
+		if (hasUpgrade("r", 12)) mult = mult.times(upgradeEffect("r", 12))
+		return mult
+	},
 	gainExp() { return new Decimal(1) },
 	row: 3,
 	effect() {
@@ -618,9 +638,225 @@ addLayer("f", {
 			effectDescription: "You can buy max Factories.",
 			done() { return player.f.points.gte(3) },
 		},
+		2: {
+			requirementDescription: "6 Factories",
+			effectDescription: "Unlock Power.",
+			done() { return player.f.points.gte(6) },
+		},
+	},
+	doReset(resettingLayer) {
+		if (layers[resettingLayer].row <= this.row) return
+		let keep = ["milestones"]
+		if (hasMilestone("w", 0)) keep.push("upgrades")
+		layerDataReset(this.layer, keep)
+	},
+	passiveGeneration() {
+		if (hasUpgrade("r", 14)) return 0.15
+		if (hasUpgrade("r", 13)) return 0.05
+		return 0
+	},
+	autoPrestige() {
+		return false
 	},
 	hotkeys: [
 		{key: "f", description: "F: reset for Factories", onPress(){ if (canReset(this.layer)) doReset(this.layer) }},
 	],
 	layerShown() { return player.b.best.gte(8) || player.f.unlocked },
+})
+
+addLayer("w", {
+	name: "power",
+	symbol: "W",
+	position: 0,
+	startData() { return {
+		unlocked: false,
+		points: new Decimal(0),
+		best: new Decimal(0),
+		total: new Decimal(0),
+	}},
+	color: "#e0c347",
+	requires: new Decimal(6),
+	resource: "power cells",
+	baseResource: "factories",
+	baseAmount() { return player.f.points },
+	type: "normal",
+	exponent: 0.7,
+	gainMult() {
+		let mult = new Decimal(1)
+		if (hasUpgrade("w", 11)) mult = mult.times(2)
+		if (hasUpgrade("w", 14)) mult = mult.times(buyableEffect("w", 11))
+		if (player.r && player.r.unlocked) mult = mult.times(layers.r.effect())
+		return mult
+	},
+	gainExp() { return new Decimal(1) },
+	row: 4,
+	effect() {
+		return player.w.points.add(1).pow(0.8)
+	},
+	effectDescription() {
+		return "multiplying core production by " + format(layers.w.effect()) + "x"
+	},
+	upgrades: {
+		11: {
+			title: "Dynamos",
+			description: "Double Power gain.",
+			cost: new Decimal(1),
+		},
+		12: {
+			title: "Motor Control",
+			description: "Automatically buy Machine upgrades.",
+			cost: new Decimal(2),
+			unlocked() { return hasUpgrade("w", 11) },
+		},
+		13: {
+			title: "Drafting Server",
+			description: "Passively generate 10% of your Blueprint reset gain each second.",
+			cost: new Decimal(4),
+			unlocked() { return hasUpgrade("w", 12) },
+		},
+		14: {
+			title: "Battery Racks",
+			description: "Unlock Capacitor buyables. They multiply Power gain.",
+			cost: new Decimal(8),
+			unlocked() { return hasUpgrade("w", 13) },
+		},
+		15: {
+			title: "Power Bus",
+			description: "Unlock Robotics.",
+			cost: new Decimal(15),
+			unlocked() { return hasUpgrade("w", 14) },
+		},
+	},
+	buyables: {
+		11: {
+			title: "Capacitors",
+			cost(x) { return new Decimal(2).times(new Decimal(1.8).pow(x)) },
+			effect(x) { return new Decimal(1.5).pow(x) },
+			display() { return workshopBuyableDisplay(this.layer, this.id, "Multiplies Power gain.", "power cells") },
+			canAfford() { return player.w.points.gte(tmp.w.buyables[this.id].cost) },
+			buy() {
+				let cost = tmp.w.buyables[this.id].cost
+				spendLayerPoints("w", cost)
+				addBuyables("w", this.id, 1)
+			},
+			buyMax() { if (hasMilestone("r", 1)) buyMaxWorkshopBuyable(this.layer, this.id) },
+			unlocked() { return hasUpgrade("w", 14) },
+		},
+	},
+	milestones: {
+		0: {
+			requirementDescription: "1 total Power Cell",
+			effectDescription: "Keep Factory upgrades on Power and higher resets.",
+			done() { return player.w.total.gte(1) },
+		},
+		1: {
+			requirementDescription: "5 total Power Cells",
+			effectDescription: "Keep Blueprint upgrades on Power and higher resets.",
+			done() { return player.w.total.gte(5) },
+		},
+		2: {
+			requirementDescription: "15 total Power Cells",
+			effectDescription: "Keep Power upgrades on Robotics resets.",
+			done() { return player.w.total.gte(15) },
+		},
+	},
+	passiveGeneration() {
+		if (hasUpgrade("r", 11)) return 0.1
+		return 0
+	},
+	autoUpgrade() {
+		return hasMilestone("r", 0)
+	},
+	doReset(resettingLayer) {
+		if (layers[resettingLayer].row <= this.row) return
+		let keep = ["milestones"]
+		if (hasMilestone("w", 2)) keep.push("upgrades")
+		layerDataReset(this.layer, keep)
+	},
+	hotkeys: [
+		{key: "w", description: "W: reset for Power Cells", onPress(){ if (canReset(this.layer)) doReset(this.layer) }},
+	],
+	layerShown() { return hasMilestone("f", 2) || player.w.unlocked },
+})
+
+addLayer("r", {
+	name: "robotics",
+	symbol: "R",
+	position: 0,
+	startData() { return {
+		unlocked: false,
+		points: new Decimal(0),
+		best: new Decimal(0),
+		total: new Decimal(0),
+	}},
+	color: "#b26ad8",
+	requires: new Decimal(20),
+	resource: "robotics cores",
+	baseResource: "power cells",
+	baseAmount() { return player.w.points },
+	type: "static",
+	base: 2.5,
+	exponent: 1.35,
+	canBuyMax() { return hasMilestone("r", 2) },
+	gainMult() { return new Decimal(1) },
+	gainExp() { return new Decimal(1) },
+	row: 5,
+	effect() {
+		return player.r.points.add(1).pow(1.2)
+	},
+	effectDescription() {
+		return "multiplying core production and Power gain by " + format(layers.r.effect()) + "x"
+	},
+	upgrades: {
+		11: {
+			title: "Maintenance Bots",
+			description: "Passively generate 10% of your Power reset gain each second.",
+			cost: new Decimal(1),
+		},
+		12: {
+			title: "Factory Arms",
+			description: "Robotics Cores multiply Factory gain.",
+			cost: new Decimal(2),
+			effect() { return player.r.points.add(1).pow(0.8) },
+			effectDisplay() { return format(upgradeEffect("r", 12)) + "x" },
+			unlocked() { return hasUpgrade("r", 11) },
+		},
+		13: {
+			title: "Supply Bots",
+			description: "Passively generate 5% of your Factory reset gain each second.",
+			cost: new Decimal(3),
+			unlocked() { return hasUpgrade("r", 12) },
+		},
+		14: {
+			title: "Factory Scheduler",
+			description: "Increase passive Factory generation to 15% of your reset gain each second.",
+			cost: new Decimal(5),
+			unlocked() { return hasUpgrade("r", 13) },
+		},
+	},
+	milestones: {
+		0: {
+			requirementDescription: "1 Robotics Core",
+			effectDescription: "Automatically buy Power upgrades.",
+			done() { return player.r.points.gte(1) },
+		},
+		1: {
+			requirementDescription: "2 Robotics Cores",
+			effectDescription: "Unlock bulk buying for Power buyables.",
+			done() { return player.r.points.gte(2) },
+		},
+		2: {
+			requirementDescription: "4 Robotics Cores",
+			effectDescription: "You can buy max Robotics Cores.",
+			done() { return player.r.points.gte(4) },
+		},
+	},
+	doReset(resettingLayer) {
+		if (layers[resettingLayer].row <= this.row) return
+		layerDataReset(this.layer, ["milestones"])
+	},
+	hotkeys: [
+		{key: "r", description: "R: reset for Robotics Cores", onPress(){ if (canReset(this.layer)) doReset(this.layer) }},
+	],
+	layerShown() { return hasUpgrade("w", 15) || player.r.unlocked },
 })

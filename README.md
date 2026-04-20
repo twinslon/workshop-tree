@@ -3,7 +3,7 @@
 A small incremental game built with The Modding Tree.
 
 You begin with scraps, refine them into parts, build machines, draft blueprints,
-and eventually assemble factories that multiply the whole workshop.
+assemble factories, energize the workshop, and eventually automate it with robotics.
 
 ## Local Play
 
@@ -21,7 +21,9 @@ Then visit `http://localhost:8000`.
 - Machines: the second layer, with milestones, automation, and machine shop buyables.
 - Logistics: a side layer for choosing a production focus.
 - Blueprints: contracts, mid-game upgrades, and preservation milestones.
-- Factories: a static prestige layer with late-game upgrades and the current endgame goal.
+- Factories: a static prestige layer with late-game upgrades and automation hooks.
+- Power: post-Factory production, preservation, and automation.
+- Robotics: static late-game cores that automate Power and Factory progress.
 
 ## Credits
 

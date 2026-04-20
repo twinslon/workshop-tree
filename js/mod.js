@@ -11,11 +11,15 @@ let modInfo = {
 }
 
 let VERSION = {
-	num: "0.2.1",
-	name: "Factory Tuning",
+	num: "0.3",
+	name: "Power Grid",
 }
 
 let changelog = `<h1>Changelog:</h1><br>
+	<h3>v0.3 - Power Grid</h3><br>
+		- Added Power and Robotics layers after Factories.<br>
+		- Added new automation for Machines, Blueprints, and Factories.<br>
+		- Moved the endgame target into Robotics.<br><br>
 	<h3>v0.2.1 - Factory Tuning</h3><br>
 		- Removed the forced Parts auto-reset loop from Night Shift.<br>
 		- Slowed Factory costs and reduced the global Factory multiplier so the post-Factory game lasts longer.<br><br>
@@ -53,6 +57,8 @@ function getPointGen() {
 	if (hasChallenge("b", 21)) gain = gain.times(challengeEffect("b", 21))
 	if (player.l && player.l.focus == "scraps") gain = gain.times(clickableEffect("l", 11))
 	if (player.f && player.f.unlocked) gain = gain.times(layers.f.effect())
+	if (player.w && player.w.unlocked) gain = gain.times(layers.w.effect())
+	if (player.r && player.r.unlocked) gain = gain.times(layers.r.effect())
 
 	return gain
 }
@@ -71,7 +77,7 @@ var displayThings = [
 ]
 
 function isEndgame() {
-	return player.f && player.f.points.gte(10)
+	return player.r && player.r.points.gte(5)
 }
 
 var backgroundStyle = {
